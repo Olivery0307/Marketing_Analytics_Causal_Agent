@@ -8,9 +8,12 @@ dependencies = [
     "duckdb>=1.5.1",
     "fastapi>=0.135.2",
     "google-adk>=1.28.0",
+    "google-cloud-bigquery>=3.40.1",
     "httpx>=0.28.1",
+    "matplotlib>=3.10.8",
     "numpy>=2.4.4",
     "pandas>=3.0.1",
     "pydantic>=2.12.5",
+    "scipy>=1.17.1",
     "uvicorn>=0.42.0",
 ]
