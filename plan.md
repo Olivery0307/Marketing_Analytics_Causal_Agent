@@ -29,16 +29,16 @@ Users ask marketing questions, and the agent queries BigQuery, runs EDA, perform
   └── schemas/
       └── models.py         # Pydantic structured output schemas
   ```
-- [ ] Set up BigQuery access (service account or ADC)
+- [x] Set up BigQuery access (service account or ADC)
 
 ---
 
 ## Phase 1: Data Collection (Step 1 — 5 pts)
-- [ ] Build `query_bigquery` tool:
+- [x] Build `query_bigquery` tool:
   - Agent generates SQL based on user question
   - Queries `ga_sessions_*` tables with date range filters
   - Flattens nested fields (hits, products, trafficSource) into analysis-ready DataFrames
-- [ ] Key fields to extract:
+- [x] Key fields to extract:
   - **Traffic**: `channelGrouping`, `trafficSource.source`, `trafficSource.medium`, `trafficSource.campaign`
   - **Behavior**: `totals.pageviews`, `totals.timeOnSite`, `totals.hits`
   - **Conversion**: `totals.transactions`, `totals.totalTransactionRevenue`
@@ -47,7 +47,7 @@ Users ask marketing questions, and the agent queries BigQuery, runs EDA, perform
 ---
 
 ## Phase 2: EDA Agent (Step 2 — 5 pts)
-- [ ] Build EDA sub-agent with tools:
+- [x] Build EDA sub-agent with tools:
   - `descriptive_stats` — summary stats, distributions, missing data
   - `segment_comparison` — group-by analysis (e.g., mobile vs desktop conversion rates)
   - `trend_analysis` — time-series patterns across date range
