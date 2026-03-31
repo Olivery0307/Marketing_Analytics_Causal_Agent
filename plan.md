@@ -38,7 +38,7 @@ Users ask marketing questions, and the agent queries BigQuery, runs EDA, perform
   - Agent generates SQL based on user question
   - Queries `ga_sessions_*` tables with date range filters
   - Flattens nested fields (hits, products, trafficSource) into analysis-ready DataFrames
-- [ ] Key fields to extract:
+- [x] Key fields to extract:
   - **Traffic**: `channelGrouping`, `trafficSource.source`, `trafficSource.medium`, `trafficSource.campaign`
   - **Behavior**: `totals.pageviews`, `totals.timeOnSite`, `totals.hits`
   - **Conversion**: `totals.transactions`, `totals.totalTransactionRevenue`

@@ -19,3 +19,8 @@ dependencies = [
     "scipy>=1.17.1",
     "uvicorn>=0.42.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.8",
+]
