@@ -29,12 +29,12 @@ Users ask marketing questions, and the agent queries BigQuery, runs EDA, perform
   └── schemas/
       └── models.py         # Pydantic structured output schemas
   ```
-- [ ] Set up BigQuery access (service account or ADC)
+- [x] Set up BigQuery access (service account or ADC)
 
 ---
 
 ## Phase 1: Data Collection (Step 1 — 5 pts)
-- [ ] Build `query_bigquery` tool:
+- [x] Build `query_bigquery` tool:
   - Agent generates SQL based on user question
   - Queries `ga_sessions_*` tables with date range filters
   - Flattens nested fields (hits, products, trafficSource) into analysis-ready DataFrames
