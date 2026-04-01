@@ -4,4 +4,5 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY . .
-CMD ["uv", "run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+ENV PATH="/app/.venv/bin:$PATH"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

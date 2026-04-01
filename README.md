@@ -36,8 +36,8 @@ cp .env.example .env
 # Edit .env — set GCP_PROJECT_ID to your project
 
 # 4. Run
-uv run python app/main.py serve        # Start server at http://localhost:8000
-uv run python app/main.py ask "Does mobile convert as well as desktop?"
+uv run python -m app.main serve        # Start server at http://localhost:8000
+uv run python -m app.main ask "Does mobile convert as well as desktop?"
 ```
 
 **Deployment (Google Cloud Run):**

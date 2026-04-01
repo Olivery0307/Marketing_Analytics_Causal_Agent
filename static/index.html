@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketing Analytics Agent</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f8f9fb;
+      --surface:   #ffffff;
+      --border:    #e2e6ea;
+      --primary:   #2563eb;
+      --primary-h: #1d4ed8;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --success:   #16a34a;
+      --warn:      #d97706;
+      --radius:    10px;
+      --shadow:    0 1px 4px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+    header h1 span.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; }
+    header .badge {
+      font-size: .72rem;
+      background: #eff6ff;
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+      padding: .15rem .55rem;
+      border-radius: 99px;
+      font-weight: 500;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      flex: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1.5rem 1.5rem 2rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      font-size: .78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+    .dataset-info p { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+    .dataset-info strong { color: var(--text); }
+
+    .examples ul { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+    .examples li button {
+      width: 100%;
+      text-align: left;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .45rem .65rem;
+      font-size: .8rem;
+      color: var(--text);
+      cursor: pointer;
+      line-height: 1.4;
+      transition: background .15s, border-color .15s;
+    }
+    .examples li button:hover { background: #eff6ff; border-color: #bfdbfe; color: var(--primary); }
+
+    /* ── Main ── */
+    main { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+
+    /* ── Ask form ── */
+    .ask-card { display: flex; flex-direction: column; gap: .75rem; }
+    .ask-card label { font-size: .82rem; font-weight: 500; color: var(--muted); }
+    .input-row { display: flex; gap: .6rem; }
+    .input-row textarea {
+      flex: 1;
+      resize: none;
+      height: 60px;
+      padding: .65rem .85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s, box-shadow .15s;
+      line-height: 1.5;
+    }
+    .input-row textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+      background: var(--surface);
+    }
+    .btn {
+      padding: .6rem 1.3rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+      transition: background .15s;
+      height: 60px;
+    }
+    .btn:hover:not(:disabled) { background: var(--primary-h); }
+    .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    /* ── Loader ── */
+    .loader {
+      display: none;
+      align-items: center;
+      gap: .6rem;
+      font-size: .83rem;
+      color: var(--muted);
+    }
+    .loader.active { display: flex; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Pipeline steps ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .pipeline .step {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: .2rem .6rem;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--bg);
+    }
+    .pipeline .step.done { background: #f0fdf4; border-color: #bbf7d0; color: var(--success); }
+    .pipeline .step.active { background: #eff6ff; border-color: #bfdbfe; color: var(--primary); }
+    .pipeline .arrow { color: var(--border); font-size: .8rem; }
+
+    /* ── Result card ── */
+    .result-card { display: none; flex-direction: column; gap: 1.25rem; }
+    .result-card.visible { display: flex; }
+
+    .result-question {
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--muted);
+      border-left: 3px solid var(--primary);
+      padding-left: .65rem;
+    }
+
+    /* Markdown answer */
+    .answer-body {
+      font-size: .88rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .answer-body h1, .answer-body h2, .answer-body h3 {
+      margin: 1rem 0 .4rem;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .answer-body h3 { font-size: .9rem; }
+    .answer-body p { margin-bottom: .6rem; }
+    .answer-body ul, .answer-body ol { padding-left: 1.4rem; margin-bottom: .6rem; }
+    .answer-body li { margin-bottom: .25rem; }
+    .answer-body strong { color: var(--text); }
+    .answer-body code {
+      background: #f1f5f9;
+      padding: .1em .35em;
+      border-radius: 4px;
+      font-size: .83em;
+      font-family: ui-monospace, monospace;
+    }
+    .answer-body pre {
+      background: #f1f5f9;
+      padding: .75rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: .6rem;
+    }
+    .answer-body pre code { background: none; padding: 0; font-size: .82rem; }
+    .answer-body blockquote {
+      border-left: 3px solid var(--border);
+      padding-left: .8rem;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+    .answer-body hr { border: none; border-top: 1px solid var(--border); margin: .8rem 0; }
+    .answer-body table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-bottom: .6rem; }
+    .answer-body th { background: #f8f9fb; text-align: left; }
+    .answer-body th, .answer-body td { padding: .4rem .65rem; border: 1px solid var(--border); }
+
+    /* Charts */
+    .charts-section h2 {
+      font-size: .78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+    .charts-grid { display: flex; flex-direction: column; gap: 1rem; }
+    .chart-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .chart-title { font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: .5rem; }
+    .chart-plot { width: 100%; min-height: 360px; }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: .75rem 1rem;
+      border-radius: var(--radius);
+      font-size: .83rem;
+    }
+    .error-msg.visible { display: block; }
+
+    @media (max-width: 720px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { order: 2; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span> Marketing Analytics Agent</h1>
+  <span class="badge">GA360 · Aug 2016 – Aug 2017</span>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="card dataset-info" id="datasetCard">
+      <h2>Dataset</h2>
+      <p>Loading…</p>
+    </div>
+
+    <div class="card examples">
+      <h2>Example Questions</h2>
+      <ul id="exampleList">
+        <li><button>Does organic search convert better than paid search?</button></li>
+        <li><button>Do desktop users convert at a higher rate than mobile users?</button></li>
+        <li><button>Which traffic channel has the highest revenue per session?</button></li>
+        <li><button>Does referral traffic outperform direct traffic in conversion rate?</button></li>
+        <li><button>Is the revenue per session higher for desktop users compared to mobile users?</button></li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Ask form -->
+    <div class="card ask-card">
+      <label for="questionInput">Ask a marketing analytics question</label>
+      <div class="input-row">
+        <textarea
+          id="questionInput"
+          placeholder="e.g. Does organic traffic convert better than paid search?"
+          spellcheck="false"
+        ></textarea>
+        <button class="btn" id="analyzeBtn" onclick="analyze()">Analyze</button>
+      </div>
+
+      <!-- Pipeline indicator -->
+      <div class="pipeline" id="pipeline" style="display:none">
+        <span class="step" id="step-collect">Collect</span>
+        <span class="arrow">›</span>
+        <span class="step" id="step-eda">EDA</span>
+        <span class="arrow">›</span>
+        <span class="step" id="step-causal">Hypothesize</span>
+      </div>
+
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <span id="loaderText">Running analysis…</span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- Result -->
+    <div class="card result-card" id="resultCard">
+      <p class="result-question" id="resultQuestion"></p>
+      <div class="answer-body" id="answerBody"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-section" id="chartsSection" style="display:none">
+      <h2>Visualizations</h2>
+      <div class="charts-grid" id="chartsGrid"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ── Dataset info ──────────────────────────────────────────
+  async function loadDatasets() {
+    try {
+      const res = await fetch('/datasets');
+      const datasets = await res.json();
+      if (datasets.length) {
+        const d = datasets[0];
+        document.getElementById('datasetCard').innerHTML = `
+          <h2>Dataset</h2>
+          <p><strong>${d.name}</strong></p>
+          <p style="margin-top:.5rem">${d.rows} sessions</p>
+          <p>${d.start_date.slice(0,4)}/${d.start_date.slice(4,6)} – ${d.end_date.slice(0,4)}/${d.end_date.slice(4,6)}</p>
+          <p style="margin-top:.4rem">${d.description}</p>
+        `;
+      }
+    } catch (e) {
+      console.warn('Could not load datasets:', e);
+    }
+  }
+
+  // ── Example questions ─────────────────────────────────────
+  document.getElementById('exampleList').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (btn) {
+      document.getElementById('questionInput').value = btn.textContent.trim();
+      document.getElementById('questionInput').focus();
+    }
+  });
+
+  // ── Enter key submits ─────────────────────────────────────
+  document.getElementById('questionInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      analyze();
+    }
+  });
+
+  // ── Pipeline step helpers ─────────────────────────────────
+  function setPipelineStep(step) {
+    ['collect', 'eda', 'causal'].forEach(s => {
+      const el = document.getElementById(`step-${s}`);
+      el.className = 'step';
+      if (s === step) el.classList.add('active');
+      else if (
+        (step === 'eda'    && s === 'collect') ||
+        (step === 'causal' && (s === 'collect' || s === 'eda'))
+      ) el.classList.add('done');
+    });
+  }
+
+  // ── Main analyze function ─────────────────────────────────
+  async function analyze() {
+    const question = document.getElementById('questionInput').value.trim();
+    if (!question) return;
+
+    // Reset UI
+    setLoading(true);
+    document.getElementById('errorMsg').classList.remove('visible');
+    document.getElementById('resultCard').classList.remove('visible');
+    document.getElementById('chartsSection').style.display = 'none';
+    document.getElementById('chartsGrid').innerHTML = '';
+    document.getElementById('pipeline').style.display = 'flex';
+    setPipelineStep('collect');
+
+    // Animate pipeline steps while waiting
+    const steps = ['collect', 'eda', 'causal'];
+    let stepIdx = 0;
+    const stepTimer = setInterval(() => {
+      stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+      setPipelineStep(steps[stepIdx]);
+      const labels = { collect: 'Querying BigQuery…', eda: 'Running EDA…', causal: 'Testing hypothesis…' };
+      document.getElementById('loaderText').textContent = labels[steps[stepIdx]];
+    }, 4000);
+
+    try {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      });
+
+      clearInterval(stepTimer);
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Server error ${res.status}: ${err}`);
+      }
+
+      const data = await res.json();
+
+      // Mark all steps done
+      ['collect', 'eda', 'causal'].forEach(s =>
+        document.getElementById(`step-${s}`).className = 'step done'
+      );
+
+      // Render answer
+      document.getElementById('resultQuestion').textContent = data.question;
+      document.getElementById('answerBody').innerHTML = marked.parse(data.answer || '');
+      document.getElementById('resultCard').classList.add('visible');
+
+      // Render charts
+      if (data.charts && data.charts.length > 0) {
+        renderCharts(data.charts);
+      }
+
+    } catch (err) {
+      clearInterval(stepTimer);
+      const errEl = document.getElementById('errorMsg');
+      errEl.textContent = err.message || 'An unexpected error occurred.';
+      errEl.classList.add('visible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Chart rendering ───────────────────────────────────────
+  function renderCharts(charts) {
+    const grid = document.getElementById('chartsGrid');
+    charts.forEach((chart, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'chart-wrap';
+
+      const title = document.createElement('div');
+      title.className = 'chart-title';
+      title.textContent = chart.title || `Chart ${i + 1}`;
+
+      const plot = document.createElement('div');
+      plot.className = 'chart-plot';
+      plot.id = `chart-${i}`;
+
+      wrap.appendChild(title);
+      wrap.appendChild(plot);
+      grid.appendChild(wrap);
+
+      try {
+        const fig = JSON.parse(chart.plotly_json);
+        const layout = Object.assign({}, fig.layout, {
+          paper_bgcolor: 'white',
+          plot_bgcolor: 'white',
+          margin: { l: 20, r: 20, t: 40, b: 40 },
+          font: { family: 'system-ui, sans-serif', size: 12 },
+        });
+        Plotly.react(plot, fig.data, layout, { responsive: true, displayModeBar: false });
+      } catch (e) {
+        plot.textContent = 'Chart could not be rendered.';
+        console.error('Chart render error:', e);
+      }
+    });
+
+    document.getElementById('chartsSection').style.display = 'block';
+  }
+
+  // ── Loading state ─────────────────────────────────────────
+  function setLoading(active) {
+    document.getElementById('loader').classList.toggle('active', active);
+    document.getElementById('analyzeBtn').disabled = active;
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  loadDatasets();
+</script>
+</body>
+</html>
