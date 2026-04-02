@@ -2,28 +2,42 @@
 
 An AI agent that answers marketing questions using real Google Analytics e-commerce data. Ask natural language questions and get statistically rigorous answers — not just summaries.
 
+**Live demo:** https://marketing-analytics-causal-agent-32542646336.us-central1.run.app/
+
 ## What it does
 
 - **Causal analysis** — runs A/B tests (chi-squared, Mann-Whitney U) to determine whether differences between segments are statistically significant, with effect sizes and confidence intervals
 - **EDA** — descriptive stats and segment comparison across channels, devices, and geographies
 - **Multi-agent pipeline** — orchestrator routes your question to specialized EDA and causal sub-agents, then synthesizes a final answer
 - **Interactive charts** — Plotly visualizations (conversion rate bars, CI plots) rendered in the browser
+- **Chat history** — session-based conversation memory; follow-up questions retain prior context
 - **Structured output** — every result is a typed Pydantic schema: `EDAResult`, `ABTestResult`, `CausalResult`
 
 **Data source:** [Google Analytics Sample](https://console.cloud.google.com/marketplace/product/obfuscated-ga360-data/obfuscated-ga360-data) — 12 months of real Google Merchandise Store sessions (Aug 2016 – Aug 2017), queried live from BigQuery.
 
 **Example questions:**
-- "Does organic traffic convert better than paid search?"
-- "Is there a significant difference in revenue between mobile and desktop?"
-- "Which channel has the highest ROI?"
-- "Did referral traffic significantly outperform direct last August?"
+- "Does referral traffic convert significantly better than organic search?"
+- "How do all traffic channels compare in conversion rate and revenue?"
+- "Do desktop users convert at a higher rate than mobile users?"
+- "Is the difference between social and organic conversion significant?"
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Agent framework | OpenAI Agents SDK + LiteLLM |
+| LLM | Vertex AI — Gemini 2.5 Flash (orchestrator/causal), Gemini 2.0 Flash Lite (EDA) |
+| Data | BigQuery public dataset — `bigquery-public-data.google_analytics_sample` |
+| Backend | FastAPI + Uvicorn |
+| Frontend | Vanilla JS + Plotly.js |
+| Deployment | Google Cloud Run |
 
 ## Setup
 
 **Prerequisites:** Python 3.12+, [uv](https://docs.astral.sh/uv/), a Google Cloud project with BigQuery API enabled.
 
 ```bash
-# 1. Clone and install dependencies
+# 1. Clone and install
 git clone <repo>
 cd data_analyst_agent
 uv sync
@@ -40,11 +54,11 @@ uv run python -m app.main serve        # Start server at http://localhost:8000
 uv run python -m app.main ask "Does mobile convert as well as desktop?"
 ```
 
-**Deployment (Google Cloud Run):**
+**Deploy to Cloud Run:**
 ```bash
-gcloud run deploy --source .
+gcloud run deploy --source . --memory 1Gi --max-instances 1
 ```
-Cloud Run uses the attached service account automatically — no credential file needed in the container.
+Cloud Run uses the attached service account automatically — no credential file needed in the container. `--max-instances 1` ensures session continuity across requests.
 
 ## Repo structure
 
@@ -57,11 +71,15 @@ app/
 │   └── causal_agent.py      # Causal sub-agent — A/B tests, effect size, CI
 ├── tools/
 │   ├── bigquery.py          # BigQuery queries → DataFrames (sessions, channel, device)
-│   ├── statistics.py        # Statistical tests — chi-squared, Mann-Whitney, Cohen's d
+│   ├── statistics.py        # Statistical tests — chi-squared, Mann-Whitney, Cohen's h
 │   └── visualization.py     # Plotly charts → JSON for frontend rendering
 └── schemas/
     └── models.py            # Pydantic models: EDAResult, ABTestResult, CausalResult
 
 static/
-└── index.html               # Frontend — chat UI with embedded Plotly charts
+└── index.html               # Chat UI — pipeline badges, Plotly charts, Learn More modals
+
+tests/
+├── test_tools.py            # Unit tests — BigQuery, EDA, A/B test, visualization (25 tests)
+└── test_agents.py           # Integration tests — live LLM calls (6 tests)
 ```
