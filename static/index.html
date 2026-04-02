@@ -546,8 +546,11 @@
     const el = document.createElement('div');
     el.className = 'msg agent';
 
-    const badges = _pipelineSteps
-      .map(s => `<span class="pbadge done">${s.label}</span>`)
+    const stepLabels = (data.steps && data.steps.length)
+      ? data.steps
+      : _pipelineSteps.map(s => s.label);
+    const badges = stepLabels
+      .map(s => `<span class="pbadge done">${escHtml(s)}</span>`)
       .join('<span style="color:var(--muted);font-size:.7rem">›</span>');
 
     const charts = (data.charts || [])
