@@ -332,6 +332,85 @@
       margin-top: .45rem; padding-left: .25rem;
     }
 
+    /* ── Modals (dataset details, code, learn more) ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,.45); backdrop-filter: blur(3px);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      width: min(640px, 92vw); max-height: 82vh;
+      display: flex; flex-direction: column;
+      animation: modalin .18s ease;
+    }
+    .modal.modal-wide { width: min(760px, 92vw); }
+    @keyframes modalin { from { opacity:0; transform: scale(.96) translateY(6px); } }
+    .modal-header {
+      padding: 1.1rem 1.25rem .9rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-header h3 { font-size: .92rem; font-weight: 700; color: var(--text); }
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.2rem; line-height: 1;
+      padding: .2rem .4rem; border-radius: 6px;
+      transition: background .12s, color .12s;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+    .modal-body { padding: 1rem 1.25rem 1.25rem; overflow-y: auto; }
+    /* Column table */
+    .col-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .col-table th {
+      background: var(--surface-2); text-align: left;
+      padding: .45rem .65rem; font-weight: 600; font-size: .73rem;
+      color: var(--text-2); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    .col-table td { padding: .45rem .65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .col-table tr:last-child td { border-bottom: none; }
+    .col-table td:first-child { font-family: ui-monospace, monospace; font-size: .73rem; color: var(--primary); white-space: nowrap; }
+    .col-table td:nth-child(2) { color: var(--muted); font-size: .73rem; white-space: nowrap; }
+    /* Learn more cards */
+    .learn-cards { display: flex; flex-direction: column; gap: .6rem; }
+    .learn-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: .7rem .9rem;
+    }
+    .learn-card h4 { font-size: .83rem; font-weight: 600; color: var(--text); margin-bottom: .3rem; }
+    .learn-card p  { font-size: .78rem; color: var(--text-2); line-height: 1.6; margin-bottom: .4rem; }
+    .learn-card p:last-child { margin-bottom: 0; }
+    .learn-card .formula {
+      font-family: ui-monospace, monospace; font-size: .74rem;
+      background: #f1f5f9; border-radius: 4px; padding: .25rem .5rem;
+      color: var(--primary); display: inline-block; margin: .15rem 0;
+    }
+    /* Sidebar buttons */
+    .details-btn {
+      margin-top: .4rem;
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; padding: .2rem .55rem;
+      font-size: .7rem; font-weight: 500; color: var(--text-2);
+      cursor: pointer; transition: all .12s;
+    }
+    .details-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-lt); }
+    .learn-btn {
+      display: block; width: 100%; text-align: left;
+      background: none; border: none;
+      padding: .4rem .5rem; border-radius: var(--radius-sm);
+      font-size: .76rem; color: var(--text-2);
+      cursor: pointer; line-height: 1.45;
+      transition: background .12s, color .12s;
+    }
+    .learn-btn:hover { background: #ede9fe; color: #6d28d9; }
+    .learn-btn::before { content: '?'; margin-right: .5rem; font-weight: 700; color: var(--muted); font-size: .7rem; }
+    .learn-btn:hover::before { color: #6d28d9; }
+    /* View code button inside agent bubble */
+
     /* ── Scrollbar ────────────────────────────── */
     .thread::-webkit-scrollbar { width: 5px; }
     .thread::-webkit-scrollbar-track { background: transparent; }
@@ -370,9 +449,10 @@
       <div class="dataset-pill" id="datasetCard">
         <div class="dataset-meta">Loading…</div>
       </div>
+      <button class="details-btn" onclick="openDetailsModal()">View column details</button>
     </div>
 
-    <div class="sidebar-section" style="flex:1;overflow-y:auto">
+    <div class="sidebar-section" style="overflow-y:auto">
       <div class="section-label">Example Questions</div>
       <div id="exampleList">
         <button class="example-btn" onclick="setQuestion(this)">Does referral traffic convert significantly better than organic search?</button>
@@ -382,6 +462,15 @@
         <button class="example-btn" onclick="setQuestion(this)">Is the difference between social and organic conversion significant?</button>
         <button class="example-btn" onclick="setQuestion(this)">How does mobile revenue compare to desktop revenue?</button>
       </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Learn More</div>
+      <button class="learn-btn" onclick="openLearn('ab')">What is A/B Testing?</button>
+      <button class="learn-btn" onclick="openLearn('pvalue')">What is a p-value?</button>
+      <button class="learn-btn" onclick="openLearn('effectsize')">What is Effect Size?</button>
+      <button class="learn-btn" onclick="openLearn('conversion')">What is Conversion Rate?</button>
+      <button class="learn-btn" onclick="openLearn('channels')">Marketing Channel Types</button>
     </div>
   </aside>
 
@@ -417,6 +506,47 @@
     </div>
   </div>
 
+</div>
+
+<!-- Dataset details modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeDetailsModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Dataset Column Reference</h3>
+      <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>date</td><td>STRING</td><td>Session date in YYYYMMDD format</td></tr>
+          <tr><td>channelGrouping</td><td>STRING</td><td>Traffic channel: Organic Search, Paid Search, Referral, Direct, Social, Display, (Other)</td></tr>
+          <tr><td>device_category</td><td>STRING</td><td>Device type: desktop, mobile, tablet</td></tr>
+          <tr><td>continent</td><td>STRING</td><td>Visitor continent (Americas, Europe, Asia, etc.)</td></tr>
+          <tr><td>country</td><td>STRING</td><td>Visitor country (ISO name)</td></tr>
+          <tr><td>sessions</td><td>INTEGER</td><td>Number of sessions (visits) in the row. For pre-aggregated queries, this is the total per group.</td></tr>
+          <tr><td>transactions</td><td>INTEGER</td><td>Number of completed purchase transactions in the session(s)</td></tr>
+          <tr><td>revenue_usd</td><td>FLOAT</td><td>Total revenue in USD. Converted from micros (÷ 1,000,000) in the BigQuery query.</td></tr>
+          <tr><td>conversion_rate_pct</td><td>FLOAT</td><td>Derived: transactions / sessions × 100. Computed by the EDA tool.</td></tr>
+          <tr><td>revenue_per_session</td><td>FLOAT</td><td>Derived: revenue_usd / sessions. Computed by the EDA tool.</td></tr>
+          <tr><td>total_transactions</td><td>INTEGER</td><td>Alias for transactions in pre-aggregated channel/device queries</td></tr>
+          <tr><td>total_revenue_usd</td><td>FLOAT</td><td>Alias for revenue_usd in pre-aggregated channel/device queries</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- Learn more modal -->
+<div class="modal-backdrop" id="learnModalBackdrop" onclick="if(event.target===this)closeLearnModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="learnModalTitle">Learn More</h3>
+      <button class="modal-close" onclick="closeLearnModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="learnModalBody"></div>
+  </div>
 </div>
 
 <script>
@@ -485,7 +615,6 @@
     el.innerHTML = `
       <div class="msg-meta">
         <div class="msg-avatar">You</div>
-        <span>You</span>
       </div>
       <div class="msg-bubble">${escHtml(question)}</div>`;
     thread.appendChild(el);
@@ -493,22 +622,7 @@
     return el;
   }
 
-  // ── Append typing indicator with live pipeline steps ─────
-  let _pipelineTimer = null;
-  const _pipelineSteps = [
-    { label: 'Collect',     desc: 'Querying BigQuery…' },
-    { label: 'EDA',         desc: 'Running EDA…' },
-    { label: 'Hypothesize', desc: 'Testing hypothesis…' },
-    { label: 'Visualize',   desc: 'Generating charts…' },
-  ];
-
-  function _renderPipelineBadges(activeIdx) {
-    return _pipelineSteps.map((s, i) => {
-      const cls = i < activeIdx ? 'done' : i === activeIdx ? 'active' : 'pending';
-      return `<span class="pbadge ${cls}">${s.label}</span>`;
-    }).join('<span style="color:var(--muted);font-size:.7rem">›</span>');
-  }
-
+  // ── Append typing indicator (no speculative steps) ──────
   function appendTyping() {
     const thread = document.getElementById('thread');
     const el = document.createElement('div');
@@ -516,38 +630,27 @@
     el.id = 'typingIndicator';
     el.innerHTML = `
       <div class="msg-meta">
-        <div class="msg-avatar">AI</div>
-        <span id="typingLabel">Agent · Querying BigQuery…</span>
+        <div class="msg-avatar">MA</div>
+        <span>Analyzing…</span>
       </div>
       <div class="msg-bubble">
-        <div class="pipeline-badges" id="livePipeline">${_renderPipelineBadges(0)}</div>
         <div class="dot-pulse"><span></span><span></span><span></span></div>
       </div>`;
     thread.appendChild(el);
     scrollThread();
-
-    let step = 0;
-    _pipelineTimer = setInterval(() => {
-      step = Math.min(step + 1, _pipelineSteps.length - 1);
-      const lp = document.getElementById('livePipeline');
-      const tl = document.getElementById('typingLabel');
-      if (lp) lp.innerHTML = _renderPipelineBadges(step);
-      if (tl) tl.textContent = `Agent · ${_pipelineSteps[step].desc}`;
-    }, 5000);
   }
 
   // ── Replace typing with real response ─────────────────────
   function replaceTyping(data) {
-    clearInterval(_pipelineTimer);
-    _pipelineTimer = null;
     document.getElementById('typingIndicator')?.remove();
     const thread = document.getElementById('thread');
 
     const el = document.createElement('div');
     el.className = 'msg agent';
 
-    const badges = _pipelineSteps
-      .map(s => `<span class="pbadge done">${s.label}</span>`)
+    const stepLabels = (data.steps && data.steps.length) ? data.steps : [];
+    const badges = stepLabels
+      .map(s => `<span class="pbadge done">${escHtml(s)}</span>`)
       .join('<span style="color:var(--muted);font-size:.7rem">›</span>');
 
     const charts = (data.charts || [])
@@ -561,10 +664,10 @@
           </div>`;
       }).join('');
 
+
     el.innerHTML = `
       <div class="msg-meta">
-        <div class="msg-avatar">AI</div>
-        <span>Agent</span>
+        <div class="msg-avatar">MA</div>
       </div>
       <div class="msg-bubble">
         <div class="pipeline-badges">${badges}</div>
@@ -595,15 +698,13 @@
 
   // ── Append error bubble ────────────────────────────────────
   function appendError(msg) {
-    clearInterval(_pipelineTimer);
-    _pipelineTimer = null;
     document.getElementById('typingIndicator')?.remove();
     const thread = document.getElementById('thread');
     const el = document.createElement('div');
     el.className = 'msg agent';
     el.innerHTML = `
       <div class="msg-meta">
-        <div class="msg-avatar">AI</div><span>Error</span>
+        <div class="msg-avatar">MA</div>
       </div>
       <div class="msg-bubble" style="background:#fef2f2;border-color:#fecaca;color:#991b1b">
         <strong>Something went wrong</strong><br>
@@ -666,6 +767,142 @@
   function escAttr(str) {
     return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
   }
+
+  // ── Modal helpers ─────────────────────────────────────────
+  function openDetailsModal() {
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
+  function closeDetailsModal() {
+    document.getElementById('modalBackdrop').classList.remove('open');
+  }
+  function closeLearnModal() {
+    document.getElementById('learnModalBackdrop').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeDetailsModal(); closeLearnModal();
+    }
+  });
+
+  // ── Learn more content ────────────────────────────────────
+  const _learnContent = {
+    ab: {
+      title: 'What is A/B Testing?',
+      html: `<div class="learn-cards">
+        <div class="learn-card">
+          <h4>The Core Idea</h4>
+          <p>A/B testing (also called a controlled experiment) randomly splits users into two groups — a <strong>control</strong> (existing experience) and a <strong>treatment</strong> (new variant) — then measures whether the variant causes a statistically significant change in a key metric.</p>
+          <p>In marketing, typical A/B tests compare landing pages, ad creatives, email subject lines, or traffic channels.</p>
+        </div>
+        <div class="learn-card">
+          <h4>How This Agent Tests</h4>
+          <p>For <strong>conversion rate</strong> (binary outcome): chi-squared test on a 2×2 contingency table.</p>
+          <p>For <strong>revenue</strong> (continuous, often skewed): Mann-Whitney U test (non-parametric).</p>
+          <p class="formula">H₀: conversion_rate_treatment = conversion_rate_control</p>
+        </div>
+        <div class="learn-card">
+          <h4>When to Trust the Result</h4>
+          <p>Results are reliable when each group has enough sessions (ideally 1,000+), the test ran long enough to capture weekly cycles, and only one variable differs between groups.</p>
+        </div>
+      </div>`
+    },
+    pvalue: {
+      title: 'What is a p-value?',
+      html: `<div class="learn-cards">
+        <div class="learn-card">
+          <h4>Definition</h4>
+          <p>The p-value is the probability of observing a difference as large as (or larger than) the one measured, <em>assuming the null hypothesis is true</em> (i.e., there is no real difference).</p>
+          <p class="formula">p &lt; 0.05 → statistically significant (5% threshold)</p>
+        </div>
+        <div class="learn-card">
+          <h4>What It Is NOT</h4>
+          <p>A p-value is <strong>not</strong> the probability that the null hypothesis is true, and it's <strong>not</strong> the probability you made a mistake. A very small p-value with a tiny effect size may still be practically meaningless.</p>
+        </div>
+        <div class="learn-card">
+          <h4>In Practice</h4>
+          <p><strong>p &lt; 0.05</strong>: The difference is unlikely due to chance alone — but always check effect size too.</p>
+          <p><strong>p ≥ 0.05</strong>: Insufficient evidence to reject the null — not proof the groups are equal.</p>
+        </div>
+      </div>`
+    },
+    effectsize: {
+      title: 'What is Effect Size?',
+      html: `<div class="learn-cards">
+        <div class="learn-card">
+          <h4>Why Effect Size Matters</h4>
+          <p>Statistical significance tells you if a difference is real; effect size tells you if it's <em>meaningful</em>. With millions of sessions, even a 0.001% difference can be statistically significant but commercially irrelevant.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Cohen's h (for proportions)</h4>
+          <p>Used here for conversion rate comparisons.</p>
+          <p class="formula">h = 2·arcsin(√p₁) − 2·arcsin(√p₂)</p>
+          <p><strong>|h| &lt; 0.2</strong>: negligible &nbsp;|&nbsp; <strong>0.2–0.5</strong>: small &nbsp;|&nbsp; <strong>0.5–0.8</strong>: medium &nbsp;|&nbsp; <strong>&gt; 0.8</strong>: large</p>
+        </div>
+        <div class="learn-card">
+          <h4>Relative Lift</h4>
+          <p>The agent also reports <strong>relative lift</strong>: how much better (or worse) the treatment performs relative to the control.</p>
+          <p class="formula">lift = (rate_treatment − rate_control) / rate_control × 100%</p>
+        </div>
+      </div>`
+    },
+    conversion: {
+      title: 'What is Conversion Rate?',
+      html: `<div class="learn-cards">
+        <div class="learn-card">
+          <h4>Definition</h4>
+          <p>Conversion rate measures the percentage of sessions that result in a desired action — in this dataset, a completed purchase transaction.</p>
+          <p class="formula">conversion_rate = transactions / sessions × 100</p>
+        </div>
+        <div class="learn-card">
+          <h4>Why It's the Key Metric</h4>
+          <p>Conversion rate is a quality signal: a channel with fewer but more purchase-intent visitors will outperform a high-volume channel with casual browsers. Optimising conversion rate is often more cost-effective than growing traffic volume.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Benchmarks (e-commerce)</h4>
+          <p><strong>Email</strong>: ~3–5% &nbsp;|&nbsp; <strong>Organic search</strong>: ~2–3% &nbsp;|&nbsp; <strong>Paid search</strong>: ~2–4% &nbsp;|&nbsp; <strong>Social</strong>: ~0.5–1.5% &nbsp;|&nbsp; <strong>Direct</strong>: ~2–3%</p>
+          <p>The Google Merchandise Store data in this app tends to be lower — typical for brand merchandise stores.</p>
+        </div>
+      </div>`
+    },
+    channels: {
+      title: 'Marketing Channel Types',
+      html: `<div class="learn-cards">
+        <div class="learn-card">
+          <h4>Organic Search</h4>
+          <p>Visitors who found the site via unpaid search engine results (Google, Bing). High intent — users are actively searching. Best measured with SEO metrics.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Paid Search</h4>
+          <p>Visitors from paid search ads (Google Ads, Bing Ads). Also high intent but incurs cost-per-click. ROI depends on bid strategy and landing page quality.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Referral</h4>
+          <p>Visitors arriving from links on other websites (blogs, news, partners). Quality varies widely by referral source — a tech blog referral behaves very differently from a coupon site.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Direct</h4>
+          <p>Visitors who typed the URL directly or used a bookmark. Often includes returning, loyal customers — typically high conversion rate.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Social</h4>
+          <p>Visitors from social media platforms (Facebook, Twitter, YouTube). Usually lower purchase intent; better for awareness and retargeting campaigns.</p>
+        </div>
+        <div class="learn-card">
+          <h4>Display</h4>
+          <p>Visitors from banner/image ads across the Google Display Network. Lowest intent — used for awareness and retargeting. Expect lower conversion rates.</p>
+        </div>
+      </div>`
+    },
+  };
+
+  function openLearn(key) {
+    const c = _learnContent[key];
+    if (!c) return;
+    document.getElementById('learnModalTitle').textContent = c.title;
+    document.getElementById('learnModalBody').innerHTML = c.html;
+    document.getElementById('learnModalBackdrop').classList.add('open');
+  }
+
 
   // ── Init ───────────────────────────────────────────────────
   loadDatasets();

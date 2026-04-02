@@ -71,6 +71,7 @@ class AnalyzeResponse(BaseModel):
     answer: str
     session_id: str
     charts: list[dict] = []
+    steps: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +114,29 @@ def list_datasets() -> list[DatasetInfo]:
     ]
 
 
+def _extract_steps(result) -> list[str]:
+    """Derive which pipeline steps ran based on tool names called."""
+    _TOOL_STEP = {
+        "fetch_channel_data": "Collect",
+        "fetch_device_data": "Collect",
+        "fetch_sessions": "Collect",
+        "run_eda": "EDA",
+        "run_causal_analysis": "Hypothesize",
+        "visualize_segments": "Visualize",
+        "visualize_ab_test": "Visualize",
+    }
+    seen: list[str] = []
+    for item in result.new_items:
+        # ToolCallItem: name lives on raw_item
+        raw = getattr(item, "raw_item", None)
+        name = getattr(raw, "name", None)
+        if name and name in _TOOL_STEP:
+            label = _TOOL_STEP[name]
+            if label not in seen:
+                seen.append(label)
+    return seen
+
+
 def _extract_charts(result) -> list[dict]:
     """Pull ChartJSON objects out of tool call outputs in the run trace."""
     from app.tools.visualization import ChartJSON
@@ -146,6 +170,7 @@ async def _run(question: str, session_id: str) -> AnalyzeResponse:
         answer=str(result.final_output),
         session_id=session_id,
         charts=_extract_charts(result),
+        steps=_extract_steps(result),
     )
 
 
