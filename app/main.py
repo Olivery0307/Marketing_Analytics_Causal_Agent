@@ -127,7 +127,9 @@ def _extract_steps(result) -> list[str]:
     }
     seen: list[str] = []
     for item in result.new_items:
-        name = getattr(item, "name", None)
+        # ToolCallItem: name lives on raw_item
+        raw = getattr(item, "raw_item", None)
+        name = getattr(raw, "name", None)
         if name and name in _TOOL_STEP:
             label = _TOOL_STEP[name]
             if label not in seen:
