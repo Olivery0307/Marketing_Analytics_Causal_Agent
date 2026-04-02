@@ -10,8 +10,8 @@ Marketing analytics causal agent — users ask questions like "Does organic traf
 ## Running & Testing
 
 ```bash
-uv run python app/main.py serve   # Start server
-uv run python app/main.py ask "Does mobile convert as well as desktop?"
+uv run python -m app.main serve   # Start server
+uv run python -m app.main ask "Does mobile convert as well as desktop?"
 uv run ruff check .               # Lint
 ```
 

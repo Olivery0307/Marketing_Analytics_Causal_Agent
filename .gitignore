@@ -5,3 +5,4 @@ __pycache__
 .claude
 .env
 claude.md
+.ruff_cache

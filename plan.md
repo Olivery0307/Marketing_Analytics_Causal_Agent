@@ -47,7 +47,7 @@ Users ask marketing questions, and the agent queries BigQuery, runs EDA, perform
 ---
 
 ## Phase 2: EDA Agent (Step 2 — 5 pts)
-- [x] Build EDA sub-agent with tools:
+- [] Build EDA sub-agent with tools:
   - `descriptive_stats` — summary stats, distributions, missing data
   - `segment_comparison` — group-by analysis (e.g., mobile vs desktop conversion rates)
   - `trend_analysis` — time-series patterns across date range
