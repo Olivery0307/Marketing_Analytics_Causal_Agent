@@ -1,17 +1,53 @@
 import asyncio
 import json
 import os
+import uuid
 
 import typer
 import uvicorn
+from agents import Runner
+from agents.memory.session import SessionABC
+from agents.items import TResponseInputItem
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from agents import Runner
-
 from app.agents.orchestrator import orchestrator
+
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# In-memory session store (per-process; survives within a Cloud Run instance)
+# ---------------------------------------------------------------------------
+
+_sessions_store: dict[str, list[TResponseInputItem]] = {}
+
+
+class InMemorySession(SessionABC):
+    """Ephemeral chat history stored in a Python dict, keyed by session_id."""
+
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        if session_id not in _sessions_store:
+            _sessions_store[session_id] = []
+
+    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:
+        items = _sessions_store[self.session_id]
+        return items[-limit:] if limit is not None else list(items)
+
+    async def add_items(self, items: list[TResponseInputItem]) -> None:
+        _sessions_store[self.session_id].extend(items)
+
+    async def pop_item(self) -> TResponseInputItem | None:
+        if _sessions_store[self.session_id]:
+            return _sessions_store[self.session_id].pop()
+        return None
+
+    async def clear_session(self) -> None:
+        _sessions_store[self.session_id] = []
+
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -19,6 +55,7 @@ from app.agents.orchestrator import orchestrator
 
 class AnalyzeRequest(BaseModel):
     question: str
+    session_id: str | None = None  # omit to start a new session
 
 
 class DatasetInfo(BaseModel):
@@ -32,6 +69,7 @@ class DatasetInfo(BaseModel):
 class AnalyzeResponse(BaseModel):
     question: str
     answer: str
+    session_id: str
     charts: list[dict] = []
 
 
@@ -76,34 +114,50 @@ def list_datasets() -> list[DatasetInfo]:
 
 
 def _extract_charts(result) -> list[dict]:
-    """Pull any ChartJSON objects out of tool call outputs in the run trace."""
+    """Pull ChartJSON objects out of tool call outputs in the run trace."""
+    from app.tools.visualization import ChartJSON
     charts = []
     for item in result.new_items:
         raw = getattr(item, "output", None)
         if raw is None:
             continue
         try:
+            # Direct ChartJSON Pydantic object (from @function_tool on orchestrator)
+            if isinstance(raw, ChartJSON):
+                if raw.plotly_json and raw.plotly_json != "{}":
+                    charts.append(raw.model_dump())
+                continue
+            # JSON string
             data = json.loads(raw) if isinstance(raw, str) else raw
             if isinstance(data, dict) and "plotly_json" in data:
-                charts.append(data)
+                pj = data.get("plotly_json", "{}")
+                if pj and pj != "{}":
+                    charts.append(data)
         except (json.JSONDecodeError, TypeError, AttributeError):
             continue
     return charts
 
 
-async def _run(question: str) -> AnalyzeResponse:
-    result = await Runner.run(orchestrator, input=question)
+async def _run(question: str, session_id: str) -> AnalyzeResponse:
+    session = InMemorySession(session_id)
+    result = await Runner.run(orchestrator, input=question, session=session)
     return AnalyzeResponse(
         question=question,
         answer=str(result.final_output),
+        session_id=session_id,
         charts=_extract_charts(result),
     )
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    """Run a marketing question through the full Collect → EDA → Hypothesize pipeline."""
-    return await _run(request.question)
+    """Run a marketing question through the full Collect → EDA → Hypothesize pipeline.
+
+    Pass session_id from a previous response to continue a conversation.
+    Omit session_id to start fresh.
+    """
+    session_id = request.session_id or str(uuid.uuid4())
+    return await _run(request.question, session_id)
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +180,19 @@ def serve(
 @cli.command()
 def ask(
     question: str = typer.Argument(..., help="Marketing question to analyze"),
+    session_id: str = typer.Option(None, "--session", "-s", help="Session ID to continue a conversation"),
 ) -> None:
     """Run a question through the agent pipeline and print the answer."""
-    response = asyncio.run(_run(question))
+    sid = session_id or str(uuid.uuid4())
+    response = asyncio.run(_run(question, sid))
     typer.echo("\n" + "=" * 60)
     typer.echo(f"Q: {response.question}")
+    typer.echo(f"Session: {response.session_id}")
     typer.echo("=" * 60)
     typer.echo(response.answer)
     if response.charts:
         typer.echo(f"\n[{len(response.charts)} chart(s) generated — open the web UI to view]")
+    typer.echo(f"\nTo continue this conversation: --session {response.session_id}")
 
 
 if __name__ == "__main__":

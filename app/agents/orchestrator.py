@@ -12,6 +12,8 @@ from app.tools.bigquery import (
     query_device_conversion,
     query_sessions,
 )
+from app.tools.statistics import ABTestRequest, EDARequest, run_ab_test, run_eda
+from app.tools.visualization import ChartJSON, chart_ab_test, chart_eda_segments
 
 _model = LitellmModel(model=os.environ.get("MODEL", "vertex_ai/gemini-2.5-flash"))
 
@@ -99,6 +101,51 @@ _causal_tool = causal_agent.as_tool(
     ),
 )
 
+@function_tool(strict_mode=False)
+def visualize_segments(data: list[dict], dimension: str) -> ChartJSON:
+    """Generate a side-by-side bar chart of conversion rate and revenue per segment.
+
+    Use for overview or ranking questions where all segments should be shown at once.
+
+    Args:
+        data: Row records from a BigQuery query result.
+        dimension: Column to group by, e.g. 'channel' or 'device'.
+
+    Returns:
+        ChartJSON with a Plotly figure JSON string for frontend rendering.
+    """
+    eda = run_eda(EDARequest(data=data, dimension=dimension))
+    return chart_eda_segments(eda)
+
+
+@function_tool(strict_mode=False)
+def visualize_ab_test(
+    data: list[dict],
+    treatment: str,
+    control: str,
+    dimension: str,
+    metric: str = "converted",
+) -> ChartJSON:
+    """Generate an A/B test chart with conversion rate bars and 95% confidence interval.
+
+    Use for two-group comparison questions ('Does X outperform Y?').
+
+    Args:
+        data: Row records from a BigQuery query result.
+        treatment: Treatment group value, e.g. 'Referral'.
+        control: Control group value, e.g. 'Organic Search'.
+        dimension: Column identifying group membership, e.g. 'channel'.
+        metric: 'converted' for conversion rate or 'revenue_usd' for revenue.
+
+    Returns:
+        ChartJSON with a Plotly figure JSON string for frontend rendering.
+    """
+    result = run_ab_test(ABTestRequest(
+        data=data, treatment=treatment, control=control,
+        dimension=dimension, metric=metric,
+    ))
+    return chart_ab_test(result)
+
 
 # ---------------------------------------------------------------------------
 # Orchestrator
@@ -123,7 +170,11 @@ and the user's question.
 3. CAUSAL — Call run_causal_analysis with the same data.data list, the EDA summary, \
 and the user's question.
 
-4. SYNTHESIZE — Write a final answer that:
+4. VISUALIZE — Always call a chart tool after causal analysis:
+   - Two-group comparison ("Does X beat Y?") → visualize_ab_test(data, treatment, control, dimension)
+   - Overview or ranking ("How do all channels compare?") → visualize_segments(data, dimension)
+
+5. SYNTHESIZE — Write a final answer that:
    - Opens with a one-sentence direct answer
    - Cites key numbers from EDA (conversion rates, top/bottom segment)
    - States the statistical conclusion (p-value, effect size, significant or not)
@@ -136,6 +187,6 @@ use these whenever possible. fetch_sessions returns raw rows and must be kept sm
 orchestrator = Agent(
     name="Orchestrator",
     instructions=_SYSTEM_PROMPT,
-    tools=[fetch_channel_data, fetch_device_data, fetch_sessions, _eda_tool, _causal_tool],
+    tools=[fetch_channel_data, fetch_device_data, fetch_sessions, _eda_tool, _causal_tool, visualize_segments, visualize_ab_test],
     model=_model,
 )

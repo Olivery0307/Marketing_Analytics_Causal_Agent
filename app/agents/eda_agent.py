@@ -7,7 +7,7 @@ from app.schemas.models import EDAResult
 from app.tools.statistics import EDARequest, run_eda
 from app.tools.visualization import ChartJSON, chart_eda_segments
 
-_model = LitellmModel(model=os.environ.get("MODEL", "vertex_ai/gemini-2.5-flash"))
+_model = LitellmModel(model=os.environ.get("EDA_MODEL", "vertex_ai/gemini-2.0-flash-lite"))
 
 
 @function_tool(strict_mode=False)
