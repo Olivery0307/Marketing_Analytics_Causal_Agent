@@ -116,24 +116,23 @@ def list_datasets() -> list[DatasetInfo]:
 
 def _extract_steps(result) -> list[str]:
     """Derive which pipeline steps ran based on tool names called."""
-    _TOOL_STEP = {
-        "fetch_channel_data": "Collect",
-        "fetch_device_data": "Collect",
-        "fetch_sessions": "Collect",
-        "run_eda": "EDA",
-        "run_causal_analysis": "Hypothesize",
-        "visualize_segments": "Visualize",
-        "visualize_ab_test": "Visualize",
+    # run_causal_analysis now covers both EDA and Hypothesize in one step
+    _TOOL_STEP: dict[str, list[str]] = {
+        "fetch_channel_data": ["Collect"],
+        "fetch_device_data": ["Collect"],
+        "fetch_sessions": ["Collect"],
+        "run_causal_analysis": ["EDA", "Hypothesize"],
+        "visualize_segments": ["Visualize"],
+        "visualize_ab_test": ["Visualize"],
     }
     seen: list[str] = []
     for item in result.new_items:
-        # ToolCallItem: name lives on raw_item
         raw = getattr(item, "raw_item", None)
         name = getattr(raw, "name", None)
         if name and name in _TOOL_STEP:
-            label = _TOOL_STEP[name]
-            if label not in seen:
-                seen.append(label)
+            for label in _TOOL_STEP[name]:
+                if label not in seen:
+                    seen.append(label)
     return seen
 
 
