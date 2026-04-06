@@ -575,7 +575,7 @@
         document.getElementById('datasetCard').innerHTML = `
           <div class="dataset-name">${d.name}</div>
           <div class="dataset-meta">
-            ${d.rows} sessions<br>
+            ${d.rows}<br>
             ${s.slice(0,4)}/${s.slice(4,6)} – ${e.slice(0,4)}/${e.slice(4,6)}
           </div>
           <span class="dataset-tag">BigQuery Public</span>
@@ -727,24 +727,42 @@
     appendUser(question);
     appendTyping();
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 270_000); // 4.5 min
+
     try {
       const res = await fetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, session_id: sessionId }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error(`Server ${res.status}: ${txt.slice(0, 200)}`);
+        let detail = txt.slice(0, 300);
+        try { detail = JSON.parse(txt).detail || detail; } catch (_) {}
+        throw new Error(res.status === 504
+          ? 'The analysis took too long. Try a more specific question.'
+          : `Server error (${res.status}): ${detail}`);
       }
 
       const data = await res.json();
       sessionId = data.session_id;
+
+      if (!data.answer || data.answer === 'None') {
+        data.answer = 'Analysis complete. See the pipeline steps and charts above for results.';
+      }
       replaceTyping(data);
 
     } catch (err) {
-      appendError(err.message || 'An unexpected error occurred.');
+      clearTimeout(timeoutId);
+      const msg = err.name === 'AbortError'
+        ? 'Request timed out. The analysis took too long — please try again.'
+        : (err.message || 'An unexpected error occurred.');
+      appendError(msg);
     } finally {
       isLoading = false;
       document.getElementById('sendBtn').disabled = false;

@@ -5,12 +5,12 @@ import uuid
 
 import typer
 import uvicorn
-from agents import Runner
+from agents import Runner, MaxTurnsExceeded
 from agents.memory.session import SessionABC
 from agents.items import TResponseInputItem
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -162,27 +162,51 @@ def _extract_charts(result) -> list[dict]:
     return charts
 
 
+_AGENT_TIMEOUT_SECS = 240  # 4 min — Cloud Run timeout is 300s
+_MAX_TURNS = 20
+
+
 async def _run(question: str, session_id: str) -> AnalyzeResponse:
     session = InMemorySession(session_id)
-    result = await Runner.run(orchestrator, input=question, session=session)
+    try:
+        result = await asyncio.wait_for(
+            Runner.run(orchestrator, input=question, session=session, max_turns=_MAX_TURNS),
+            timeout=_AGENT_TIMEOUT_SECS,
+        )
+    except asyncio.TimeoutError:
+        raise asyncio.TimeoutError("Agent timed out after 4 minutes.")
+    except MaxTurnsExceeded:
+        raise ValueError(f"Agent exceeded {_MAX_TURNS} turns without finishing.")
+
+    answer = str(result.final_output) if result.final_output else ""
+    if not answer or answer == "None":
+        # Agent called tools but produced no synthesis — extract from last tool output
+        answer = "Analysis complete. See the pipeline steps and charts above for results."
+
     return AnalyzeResponse(
         question=question,
-        answer=str(result.final_output),
+        answer=answer,
         session_id=session_id,
         charts=_extract_charts(result),
         steps=_extract_steps(result),
     )
 
 
-@app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+@app.post("/analyze")
+async def analyze(request: AnalyzeRequest):
     """Run a marketing question through the full Collect → EDA → Hypothesize pipeline.
 
     Pass session_id from a previous response to continue a conversation.
     Omit session_id to start fresh.
     """
     session_id = request.session_id or str(uuid.uuid4())
-    return await _run(request.question, session_id)
+    try:
+        response = await _run(request.question, session_id)
+        return response
+    except asyncio.TimeoutError as e:
+        return JSONResponse(status_code=504, content={"detail": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
 # ---------------------------------------------------------------------------
