@@ -1,5 +1,7 @@
 # Marketing Analytics Causal Agent
 
+**Team Member**: Chung-Yeh Yang(cy2816), Kuan-Ting Chen(kc3953)
+
 An AI agent that answers marketing questions using real Google Analytics e-commerce data. Ask natural language questions and get statistically rigorous answers — not just summaries.
 
 **Live demo:** https://marketing-analytics-causal-agent-32542646336.us-central1.run.app/
@@ -8,7 +10,7 @@ An AI agent that answers marketing questions using real Google Analytics e-comme
 
 - **Causal analysis** — runs A/B tests (chi-squared, Mann-Whitney U) to determine whether differences between segments are statistically significant, with effect sizes and confidence intervals
 - **EDA** — descriptive stats and segment comparison across channels, devices, and geographies
-- **Multi-agent pipeline** — orchestrator routes your question to specialized EDA and causal sub-agents, then synthesizes a final answer
+- **Multi-agent pipeline** — orchestrator runs a 4-step pipeline (Collect → Analyze → Visualize → Synthesize), delegating statistical analysis to a causal sub-agent
 - **Interactive charts** — Plotly visualizations (conversion rate bars, CI plots) rendered in the browser
 - **Chat history** — session-based conversation memory; follow-up questions retain prior context
 - **Structured output** — every result is a typed Pydantic schema: `EDAResult`, `ABTestResult`, `CausalResult`
@@ -26,7 +28,7 @@ An AI agent that answers marketing questions using real Google Analytics e-comme
 | Layer | Technology |
 |---|---|
 | Agent framework | OpenAI Agents SDK + LiteLLM |
-| LLM | Vertex AI — Gemini 2.5 Flash (orchestrator/causal), Gemini 2.0 Flash Lite (EDA) |
+| LLM | Vertex AI — Gemini 2.5 Flash (causal agent), Gemini 2.0 Flash (orchestrator) |
 | Data | BigQuery public dataset — `bigquery-public-data.google_analytics_sample` |
 | Backend | FastAPI + Uvicorn |
 | Frontend | Vanilla JS + Plotly.js |
@@ -64,11 +66,10 @@ Cloud Run uses the attached service account automatically — no credential file
 
 ```
 app/
-├── main.py                  # FastAPI server + Typer CLI entry point
+├── main.py                  # FastAPI server + Typer CLI entry point; /analyze and /cancel endpoints
 ├── agents/
-│   ├── orchestrator.py      # Top-level agent — routes question, synthesizes answer
-│   ├── eda_agent.py         # EDA sub-agent — segment stats, top/bottom performers
-│   └── causal_agent.py      # Causal sub-agent — A/B tests, effect size, CI
+│   ├── orchestrator.py      # Top-level agent — Collect → Analyze → Visualize → Synthesize
+│   └── causal_agent.py      # Causal sub-agent — EDA, A/B tests, effect size, CI
 ├── tools/
 │   ├── bigquery.py          # BigQuery queries → DataFrames (sessions, channel, device)
 │   ├── statistics.py        # Statistical tests — chi-squared, Mann-Whitney, Cohen's h
