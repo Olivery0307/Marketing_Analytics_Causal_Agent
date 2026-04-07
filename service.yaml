@@ -1,0 +1,25 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: marketing-analytics-causal-agent
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: us-central1-docker.pkg.dev/agentic-ai-487001/cloud-run-source-deploy/marketing_analytics_causal_agent/marketing-analytics-causal-agent:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi

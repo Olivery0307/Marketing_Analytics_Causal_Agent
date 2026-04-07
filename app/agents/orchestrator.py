@@ -4,7 +4,6 @@ from agents import Agent, function_tool
 from agents.extensions.models.litellm_model import LitellmModel
 
 from app.agents.causal_agent import causal_agent
-from app.agents.eda_agent import eda_agent
 from app.tools.bigquery import (
     SessionData,
     SessionQueryParams,
@@ -15,7 +14,7 @@ from app.tools.bigquery import (
 from app.tools.statistics import ABTestRequest, EDARequest, run_ab_test, run_eda
 from app.tools.visualization import ChartJSON, chart_ab_test, chart_eda_segments
 
-_model = LitellmModel(model=os.environ.get("MODEL", "vertex_ai/gemini-2.5-flash"))
+_model = LitellmModel(model=os.environ.get("ORCHESTRATOR_MODEL", "vertex_ai/gemini-2.0-flash"))
 
 _DATE_START = os.environ.get("BQ_DATE_START", "20160801")
 _DATE_END = os.environ.get("BQ_DATE_END", "20170801")
@@ -83,15 +82,6 @@ def fetch_sessions(
 # Sub-agents as tools
 # ---------------------------------------------------------------------------
 
-_eda_tool = eda_agent.as_tool(
-    tool_name="run_eda",
-    tool_description=(
-        "Run exploratory data analysis on fetched session data. "
-        "Pass the full data records and the user's original question. "
-        "Returns segment-level patterns, top/bottom performers, anomalies, and a chart."
-    ),
-)
-
 _causal_tool = causal_agent.as_tool(
     tool_name="run_causal_analysis",
     tool_description=(
@@ -157,7 +147,7 @@ Google Analytics e-commerce data from the Google Merchandise Store (Aug 2016 –
 If the user asks a conversational or clarifying question (e.g. "what does p-value mean?", \
 "can you explain that?"), answer directly without calling any tools.
 
-For data analysis questions, follow this pipeline:
+For data analysis questions, follow this pipeline in exactly 3 steps:
 
 1. COLLECT — Choose the smallest dataset that answers the question:
    - Channel/traffic questions → fetch_channel_data ONLY (returns 8 rows).
@@ -165,32 +155,29 @@ For data analysis questions, follow this pipeline:
    - Time-trend or geographic questions → fetch_sessions with a ONE-month range, limit=300.
    Never call fetch_sessions for channel or device questions.
 
-2. EDA — Call run_eda with:
+2. ANALYZE — Call run_causal_analysis with:
    - data: the data.data list from step 1 (a Python list of dicts — NOT a JSON string)
-   - dimension: "channel" for channel data, "device_category" for device data
+   - The user's original question
+   This performs EDA, statistical tests, power analysis, and Simpson's paradox check in one step.
 
-3. CAUSAL — Call run_causal_analysis with:
-   - data: the same data.data list (a Python list of dicts — NOT a JSON string)
-   - The EDA summary and user question
-
-4. VISUALIZE — Call exactly one chart tool after step 3:
+3. VISUALIZE — Call exactly one chart tool immediately after step 2:
    - Two-group comparison ("does X beat Y", "X vs Y", "better than") \
 → visualize_ab_test(data=<list>, treatment=<str>, control=<str>, dimension=<str>)
    - Overview or ranking ("compare all", "how do channels compare", "which is best") \
 → visualize_segments(data=<list>, dimension=<str>)
-   CRITICAL: The data argument must be a Python list of dicts, never a JSON string. \
-Pass the same list you used in steps 2 and 3.
+   CRITICAL: Pass data as a Python list of dicts, never a JSON string. \
+Use the same list from step 1.
 
-5. SYNTHESIZE — Write a final answer that:
+4. SYNTHESIZE — Write a final answer that:
    - Opens with a one-sentence direct answer
-   - Cites key numbers (conversion rates, top/bottom segment)
-   - States the statistical conclusion (p-value, effect size, significant or not)
-   - Closes with a plain-language recommendation"""
+   - Cites key numbers (conversion rates, top/bottom segment, p-value, effect size)
+   - States whether the result is statistically significant
+   - Closes with a plain-language recommendation a marketer could act on"""
 
 
 orchestrator = Agent(
     name="Orchestrator",
     instructions=_SYSTEM_PROMPT,
-    tools=[fetch_channel_data, fetch_device_data, fetch_sessions, _eda_tool, _causal_tool, visualize_segments, visualize_ab_test],
+    tools=[fetch_channel_data, fetch_device_data, fetch_sessions, _causal_tool, visualize_segments, visualize_ab_test],
     model=_model,
 )
