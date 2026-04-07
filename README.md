@@ -60,6 +60,33 @@ gcloud run deploy --source . --memory 1Gi --max-instances 1
 ```
 Cloud Run uses the attached service account automatically — no credential file needed in the container. `--max-instances 1` ensures session continuity across requests.
 
+## How the three steps work
+
+**Step 1: Collect** — `app/tools/bigquery.py`
+The orchestrator dynamically selects the right query function based on the user's question at runtime — never hardcoded:
+- Channel/traffic questions → `query_channel_conversion()`
+- Device questions → `query_device_conversion()`
+- Time-trend or geographic questions → `query_sessions()`
+
+**Step 2: EDA** — `app/agents/eda_agent.py`
+The EDA sub-agent chooses among three tools based on question type, surfaces specific numbers (top/bottom segments, conversion rates, anomalies), and passes findings to Step 3:
+- `segment_comparison()` — channel, device, or geographic breakdowns
+- `trend_analysis()` — time-based patterns
+- `descriptive_stats()` — general distribution overview
+
+**Step 3: Hypothesize** — `app/agents/causal_agent.py`
+The causal sub-agent forms a narrative hypothesis grounded in EDA findings, then tests and quantifies it:
+- `ab_test()` — chi-squared (conversion) or Mann-Whitney U (revenue), with p-value and 95% CI
+- `power_analysis()` — checks whether sample size is adequate to trust the result
+- `segment_deep_dive()` — Simpson's paradox check across subgroups (e.g. device, continent)
+
+## Concepts implemented
+
+| Concept | File | Function / Class |
+|---|---|---|
+| Structured output | `app/schemas/models.py` | `EDAResult`, `ABTestResult`, `CausalResult` |
+| Data visualization | `app/tools/visualization.py` | `chart_eda_segments()`, `chart_ab_test()` |
+
 ## Repo structure
 
 ```
