@@ -64,15 +64,15 @@ def chart_eda_segments(eda: EDAResult) -> ChartJSON:
 
     fig.update_layout(
         title=f"Channel Performance by {eda.dimension.replace('_', ' ').title()}",
-        height=400,
+        height=420,
         showlegend=False,
-        margin=dict(l=20, r=20, t=60, b=20),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font=dict(family="system-ui, sans-serif", size=12),
+        margin=dict(l=20, r=20, t=80, b=20),
+        plot_bgcolor="#1c1c20",
+        paper_bgcolor="#1c1c20",
+        font=dict(family="system-ui, sans-serif", size=12, color="#a1a1aa"),
     )
-    fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
-    fig.update_yaxes(showgrid=False)
+    fig.update_xaxes(showgrid=True, gridcolor="#2e2e33", color="#a1a1aa")
+    fig.update_yaxes(showgrid=False, color="#a1a1aa")
 
     title = f"EDA: {eda.dimension} — {eda.summary[:80]}..."
     return ChartJSON(title=title, plotly_json=fig.to_json())
@@ -138,20 +138,38 @@ def chart_ab_test(ab: ABTestResult) -> ChartJSON:
     )
     fig.add_vline(x=0, line_dash="dash", line_color="#bdc3c7", row=1, col=2)
 
-    sig_label = f"{'✓ Significant' if ab.significant else '✗ Not significant'} (p={ab.p_value:.4f})"
-    lift_label = f"Lift: {ab.relative_lift_pct:+.1f}% | Effect: {ab.effect_size_label}"
+    sig_icon = "✓" if ab.significant else "✗"
+    sig_label = f"{sig_icon} {'Significant' if ab.significant else 'Not significant'}  ·  p = {ab.p_value:.4f}"
+    lift_label = f"Lift {ab.relative_lift_pct:+.1f}%  ·  Effect: {ab.effect_size_label}"
 
     fig.update_layout(
-        title=f"{ab.treatment} vs {ab.control}   {sig_label}   {lift_label}",
-        height=380,
+        title=dict(
+            text=f"<b>{ab.treatment} vs {ab.control}</b>",
+            font=dict(size=14, color="#f4f4f5"),
+            x=0.0,
+            xanchor="left",
+        ),
+        annotations=[
+            # keep subplot titles (index 0 and 1 are added by make_subplots)
+            *fig.layout.annotations,
+            dict(
+                text=f"{sig_label}    {lift_label}",
+                xref="paper", yref="paper",
+                x=0.0, y=1.12,
+                xanchor="left", yanchor="bottom",
+                showarrow=False,
+                font=dict(size=11, color="#71717a"),
+            ),
+        ],
+        height=440,
         showlegend=False,
-        margin=dict(l=20, r=20, t=70, b=20),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font=dict(family="system-ui, sans-serif", size=12),
+        margin=dict(l=20, r=20, t=110, b=20),
+        plot_bgcolor="#1c1c20",
+        paper_bgcolor="#1c1c20",
+        font=dict(family="system-ui, sans-serif", size=12, color="#a1a1aa"),
     )
-    fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
-    fig.update_yaxes(showgrid=False)
+    fig.update_xaxes(showgrid=True, gridcolor="#2e2e33", color="#a1a1aa")
+    fig.update_yaxes(showgrid=False, color="#a1a1aa")
 
     return ChartJSON(
         title=f"A/B Test: {ab.treatment} vs {ab.control}",
